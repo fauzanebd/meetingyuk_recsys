@@ -15,6 +15,7 @@ import os
 
 load_dotenv(".env")
 app = Flask(__name__)
+
 # sched = BackgroundScheduler(daemon=True)
 # sched.add
 
@@ -130,6 +131,5 @@ def start_app():
     find_k()
 
 start_app()
-
 if __name__ == '__main__':
     app.run()

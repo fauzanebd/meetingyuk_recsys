@@ -104,7 +104,7 @@ def run_sgd_background(
     learning_rate=0.001,
     regularization=.02,
     n_factors=40,
-    iterations=1
+    iterations=100
 ):
     print(f"Start calculating SGD")
     user_bias_reg = regularization
