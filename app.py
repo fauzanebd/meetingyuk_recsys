@@ -1,5 +1,5 @@
 import json
-
+from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, request
 from threading import Thread
 import pandas as pd
@@ -99,6 +99,7 @@ def _train_new_data_sgd():
     return jsonify({"message": "SGD training started in background."})
 
 def start_app():
+    load_dotenv(".env")
     # run_sgd_background()
     # find_k()
     app.run()

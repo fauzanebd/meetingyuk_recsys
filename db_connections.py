@@ -1,11 +1,11 @@
 import pandas as pd
 from pymongo import MongoClient
 from pymongo import UpdateOne
-
+import os
 
 def meetingyuk_mongo_collection(db_name, collection_name):
     client = MongoClient(
-        "mongodb://mongo:BuQRyu9ToLd63jhYJhrx@103.150.92.14:27017/?authMechanism=DEFAULT"
+        os.getenv('MONGODB_URI')
     )
     db = client[db_name]
     collection = db[collection_name]
@@ -13,7 +13,7 @@ def meetingyuk_mongo_collection(db_name, collection_name):
 
 def meetingyuk_mongo_db(db_name):
     client = MongoClient(
-        "mongodb://mongo:BuQRyu9ToLd63jhYJhrx@103.150.92.14:27017/?authMechanism=DEFAULT"
+        os.getenv('MONGODB_URI')
     )
     db = client[db_name]
     return db
