@@ -16,9 +16,9 @@ app = Flask(__name__)
 # sched.add
 
 
-# @app.route('/')
-# def hello_world():  # put application's code here
-#     return 'Hello World!'
+@app.route('/')
+def hello_world():  # put application's code here
+    return 'Hello World!'
 
 @app.route('/near_recs/<string:user_latitude>,<string:user_longitude>', methods=['GET'])
 def _nearest_recommendation(user_latitude, user_longitude):
