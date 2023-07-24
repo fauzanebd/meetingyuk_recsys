@@ -13,7 +13,7 @@ from nearest_recommendation import nearest_recommendation, find_k
 import os
 
 
-load_dotenv()
+load_dotenv(".env")
 app = Flask(__name__)
 # sched = BackgroundScheduler(daemon=True)
 # sched.add
