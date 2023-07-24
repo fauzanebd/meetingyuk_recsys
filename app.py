@@ -124,10 +124,12 @@ def _train_new_data_sgd():
     return jsonify({"message": "SGD training started in background."})
 
 def start_app():
+    print("Starting app...")
     load_dotenv(".env")
     run_sgd_background()
     find_k()
-    app.run()
+
+start_app()
 
 if __name__ == '__main__':
-    start_app()
+    app.run()
