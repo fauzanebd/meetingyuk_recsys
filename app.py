@@ -26,17 +26,25 @@ def _nearest_recommendation(user_latitude, user_longitude):
     if user_latitude is None or user_longitude is None:
         abort(400)
     else:
-        return (
-            jsonify({
-                "success": True,
-                "recommendation": json.loads(
-                    nearest_recommendation(user_latitude, user_longitude, max_returns)
-                )
-            })
-        )
+        try:
+            return (
+                jsonify({
+                    "success": True,
+                    "recommendation": json.loads(
+                        nearest_recommendation(user_latitude, user_longitude, max_returns)
+                    )
+                })
+            )
+        except Exception as e:
+            return (
+                jsonify({
+                    "error": e
+                }), 500
+            )
 
 @app.route('/recommendation/<string:user_id>', methods=['GET'])
 def _recommendation(user_id):
+
     max_returns = request.args.get('max_returns', default=25, type=int)
     include_rated = request.args.get('include_rated', default=False, type=bool)
     reqbody = None
@@ -55,14 +63,22 @@ def _recommendation(user_id):
     if user_id is None:
         abort(400)
     else:
-        return (
-            jsonify({
-                "success": True,
-                "recommendation": json.loads(
-                    for_you_recommendation(user_id, max_returns, latitude, longitude, include_rated)
-                )
-            })
-        )
+        try:
+            return (
+                jsonify({
+                    "success": True,
+                    "recommendation": json.loads(
+                        for_you_recommendation(user_id, max_returns, latitude, longitude, include_rated)
+                    )
+                })
+            )
+        except Exception as e:
+            return (
+                jsonify({
+                    "error": e
+                }), 500
+            )
+
 
 
 @app.route('/kmeans/train_model', methods=['GET'])
