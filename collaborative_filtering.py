@@ -104,7 +104,7 @@ def run_sgd_background(
     learning_rate=0.001,
     regularization=.02,
     n_factors=40,
-    iterations=100
+    iterations=1
 ):
     print(f"Start calculating SGD")
     user_bias_reg = regularization
@@ -157,6 +157,7 @@ def run_sgd_background(
     user_ids_int = train_data['user_id'].unique()
     place_ids_int = train_data['place_id'].unique()
 
+    print(f"Start training SGD")
     if p is not None:
         p, q, user_bias, place_bias, global_bias = partial_train(
             train_data, user_bias_reg, place_bias_reg,
