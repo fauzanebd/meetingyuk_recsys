@@ -10,6 +10,7 @@ from collaborative_filtering import run_sgd_background
 from db_connections import meetingyuk_mongo_collection, get_new_ratings_data
 from for_you_recommendation import for_you_recommendation
 from nearest_recommendation import nearest_recommendation, find_k
+import os
 
 app = Flask(__name__)
 # sched = BackgroundScheduler(daemon=True)
@@ -79,7 +80,13 @@ def _recommendation(user_id):
                 }), 500
             )
 
-
+@app.route('/check_env', methods=['GET'])
+def _check_env():
+    return jsonify({
+        "success": True,
+        "message": "Environment is set.",
+        "env": os.getenv('MONGODB_URI')
+    })
 
 @app.route('/kmeans/train_model', methods=['GET'])
 def _train_kmeans():
