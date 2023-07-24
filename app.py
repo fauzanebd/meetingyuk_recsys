@@ -125,8 +125,8 @@ def _train_new_data_sgd():
 
 def start_app():
     load_dotenv(".env")
-    # run_sgd_background()
-    # find_k()
+    run_sgd_background()
+    find_k()
     app.run()
 
 if __name__ == '__main__':
