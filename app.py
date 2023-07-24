@@ -12,6 +12,8 @@ from for_you_recommendation import for_you_recommendation
 from nearest_recommendation import nearest_recommendation, find_k
 import os
 
+
+load_dotenv()
 app = Flask(__name__)
 # sched = BackgroundScheduler(daemon=True)
 # sched.add
