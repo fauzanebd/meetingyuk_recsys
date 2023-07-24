@@ -61,7 +61,7 @@ def get_new_ratings_data(data_ids):
     return dataset
 
 def get_user_factor_df(user_ids):
-    collection = meetingyuk_mongo_collection('recsys', 'user_factors')
+    collection = meetingyuk_mongo_collection('real_recsys', 'user_factors')
     if not isinstance(user_ids, list):
         user_ids = [user_ids]
     data = collection.find({"entity_id": {"$in": user_ids}})
@@ -73,7 +73,7 @@ def get_user_factor_df(user_ids):
     return data
 
 def get_place_factor_df(place_ids):
-    collection = meetingyuk_mongo_collection('recsys', 'place_factors')
+    collection = meetingyuk_mongo_collection('real_recsys', 'place_factors')
     if not isinstance(place_ids, list):
         place_ids = [place_ids]
     data = collection.find({"entity_id": {"$in": place_ids}})
@@ -85,7 +85,7 @@ def get_place_factor_df(place_ids):
     return data
 
 def get_user_bias(user_ids):
-    collection = meetingyuk_mongo_collection('recsys', 'user_bias')
+    collection = meetingyuk_mongo_collection('real_recsys', 'user_bias')
     if not isinstance(user_ids, list):
         user_ids = [user_ids]
     data = collection.find({"entity_id": {"$in": user_ids}})
@@ -99,7 +99,7 @@ def get_user_bias(user_ids):
     return data
 
 def get_place_bias(place_ids):
-    collection = meetingyuk_mongo_collection('recsys', 'place_bias')
+    collection = meetingyuk_mongo_collection('real_recsys', 'place_bias')
     if not isinstance(place_ids, list):
         place_ids = [place_ids]
     data = collection.find({"entity_id": {"$in": place_ids}})
@@ -114,7 +114,7 @@ def get_place_bias(place_ids):
 
 
 def get_global_bias():
-    collection = meetingyuk_mongo_collection('recsys', 'global_recsys_config')
+    collection = meetingyuk_mongo_collection('real_recsys', 'global_recsys_config')
     global_bias_entry = collection.find_one({"type": "global_bias"})
     if global_bias_entry:
         return global_bias_entry.get('value', None)
