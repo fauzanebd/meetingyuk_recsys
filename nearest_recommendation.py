@@ -1,4 +1,4 @@
-from db_connections import get_all_merchants, get_all_merchant_id_and_locs
+from db_connections import get_all_merchants, get_all_merchant_id_and_locs, get_merchant_details
 import numpy as np
 from sklearn.metrics.pairwise import haversine_distances
 import pickle
@@ -8,7 +8,7 @@ import pandas as pd
 
 
 
-def nearest_recommendation(latitude, longitude, max_returns=10000):
+def nearest_recommendation(latitude, longitude, max_returns=10000, from_api=False, max_radius=10000):
     dfcluster, kmeans = get_kmeans_model()
 
     places = get_all_merchant_id_and_locs()
@@ -27,12 +27,21 @@ def nearest_recommendation(latitude, longitude, max_returns=10000):
     recommendation['distance'] = haversine_distances(
         recommendation[['latitude', 'longitude']], user_loc
     )
+    recommendation['distance'] = recommendation['distance'] * 6371
+    recommendation = recommendation[recommendation['distance'] <= max_radius]
     if len(recommendation) > max_returns:
         sort = recommendation.sort_values(by=['distance'], ascending=True)[:max_returns]
     else:
         sort = recommendation.sort_values(by=['distance'], ascending=True)
 
-    result = sort.to_json(orient='records')
+
+    recommended_place_ids = sort['_id'].tolist()
+    dataset = get_merchant_details(recommended_place_ids)
+    dataset['distance_in_km'] = dataset['_id'].map(dict(zip(sort['_id'], sort['distance'])))
+    if from_api:
+        result = dataset.to_json(orient='records')
+    else:
+        result = dataset
     return result
 
 

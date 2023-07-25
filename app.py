@@ -27,6 +27,7 @@ def hello_world():  # put application's code here
 @app.route('/near_recs/<string:user_latitude>,<string:user_longitude>', methods=['GET'])
 def _nearest_recommendation(user_latitude, user_longitude):
     max_returns = request.args.get('max_returns', default=25, type=int)
+    max_radius = request.args.get('max_radius', default=1000, type=float)
     if user_latitude is None or user_longitude is None:
         abort(400)
     else:
@@ -34,8 +35,8 @@ def _nearest_recommendation(user_latitude, user_longitude):
             return (
                 jsonify({
                     "success": True,
-                    "recommendation": json.loads(
-                        nearest_recommendation(user_latitude, user_longitude, max_returns)
+                    "recommendations": json.loads(
+                        nearest_recommendation(user_latitude, user_longitude, max_returns, from_api=True, max_radius=max_radius)
                     )
                 })
             )
@@ -58,11 +59,13 @@ def _recommendation(user_id):
         pass
     latitude = None
     longitude = None
-
+    max_radius = None
     if reqbody:
         if 'location' in reqbody:
             latitude = reqbody['location']['latitude']
             longitude = reqbody['location']['longitude']
+            max_radius = reqbody['location'].get('max_radius', 10000)
+            max_radius = float(max_radius)
 
     if user_id is None:
         abort(400)
@@ -71,8 +74,8 @@ def _recommendation(user_id):
             return (
                 jsonify({
                     "success": True,
-                    "recommendation": json.loads(
-                        for_you_recommendation(user_id, max_returns, latitude, longitude, include_rated)
+                    "recommendations": json.loads(
+                        for_you_recommendation(user_id, max_returns, latitude, longitude, include_rated, max_radius)
                     )
                 })
             )
@@ -83,13 +86,6 @@ def _recommendation(user_id):
                 }), 500
             )
 
-@app.route('/check_env', methods=['GET'])
-def _check_env():
-    return jsonify({
-        "success": True,
-        "message": "Environment is set.",
-        "env": os.getenv('MONGODB_URI')
-    })
 
 @app.route('/kmeans/train_model', methods=['GET'])
 def _train_kmeans():
@@ -127,7 +123,7 @@ def _train_new_data_sgd():
 def start_app():
     print("Starting app...")
     load_dotenv(".env")
-    run_sgd_background()
+    # run_sgd_background()
     find_k()
 
 start_app()

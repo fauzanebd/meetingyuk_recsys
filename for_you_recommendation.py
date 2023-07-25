@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 
 
-def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_longitude=None, include_rated=False):
+def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_longitude=None, include_rated=False, max_radius=10000):
     if user_latitude and user_longitude:
-        nearest_places = eval(nearest_recommendation(user_latitude, user_longitude))
-        recommendation_candidate_places_ids = [place['_id'] for place in nearest_places]
+        nearest_places = nearest_recommendation(user_latitude, user_longitude, max_radius=max_radius, from_api=False)
+        recommendation_candidate_places_ids = nearest_places['_id'].tolist()
         user_rated_places = get_user_rated_places(user_id)
         if not include_rated:
             recommendation_candidate_places_ids = list(set(recommendation_candidate_places_ids) - set(user_rated_places['place_id'].tolist()))
@@ -24,9 +24,13 @@ def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_
 
 
     if len(user_rated_places) == 0:
-        recommendation_candidate_places_ids = recommendation_candidate_places_ids[:max_returns]
-        dataset = get_merchant_details(recommendation_candidate_places_ids)
-        return dataset.to_json(orient='records')
+        if not user_latitude and not user_longitude:
+            recommendation_candidate_places_ids = recommendation_candidate_places_ids[:max_returns]
+            dataset = get_merchant_details(recommendation_candidate_places_ids)
+            return dataset.to_json(orient='records')
+        elif user_latitude and user_longitude:
+            nearest_places.sort_values(by=['ratings'], ascending=False, inplace=True)
+            return nearest_places.to_json(orient='records')
 
     place_factors = get_place_factor_df(recommendation_candidate_places_ids)
     place_id_to_int_map = {uid: iid for iid, uid in enumerate(place_factors.columns)}
@@ -59,7 +63,11 @@ def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_
         top_ratings_df = pred_df.sort_values(by='rating', ascending=False)
 
     recommended_place_ids = top_ratings_df['place_id'].tolist()
-    top_ratings_df.drop(['rating'], axis=1, inplace=True)
-    dataset = get_merchant_details(recommended_place_ids)
+    # top_ratings_df.drop(['rating'], axis=1, inplace=True)
+    if user_latitude and user_longitude:
+        dataset = nearest_places[nearest_places['_id'].isin(recommended_place_ids)]
+    else:
+        dataset = get_merchant_details(recommended_place_ids)
+    dataset['predicted_rating'] = dataset['_id'].map(dict(zip(top_ratings_df['place_id'], top_ratings_df['rating'])))
     return dataset.to_json(orient='records')
 
