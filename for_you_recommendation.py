@@ -8,13 +8,13 @@ import pandas as pd
 def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_longitude=None, include_rated=False, max_radius=10000):
     """
     This function returns recommendations for a user based on his/her location and previous ratings
-    :param user_id:
-    :param max_returns:
-    :param user_latitude:
-    :param user_longitude:
-    :param include_rated:
-    :param max_radius:
-    :return:
+    :param user_id: user id
+    :param max_returns: maximum number of recommendations to return
+    :param user_latitude: user latitude
+    :param user_longitude: user longitude
+    :param include_rated: option to include rated places in recommendation
+    :param max_radius: maximum radius to search for nearest places
+    :return: json string of recommendations
     """
 
 
