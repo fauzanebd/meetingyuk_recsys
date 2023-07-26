@@ -89,6 +89,8 @@ def _recommendation(user_id):
 
 @app.route('/kmeans/train_model', methods=['GET'])
 def _train_kmeans():
+    # Call this api every time new place data is inserted
+    # to retrain the kmeans model
     thread = Thread(target=find_k)
     thread.start()
     return jsonify({"message": "K-means training started in background."})
@@ -96,6 +98,8 @@ def _train_kmeans():
 
 @app.route('/sgd/train_new_data', methods=['GET'])
 def _train_new_data_sgd():
+    # Call this api every time new ratings data is inserted
+    # to retrain the sgd model
     try:
         reqdata = request.get_json()
     except BadRequest:

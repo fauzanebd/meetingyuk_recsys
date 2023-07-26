@@ -12,16 +12,26 @@ def compute_sgd(
     place_reg, learning_rate, p, q,
     user_bias, place_bias, global_bias
 ):
+    # Loop through r_ui in D (all ratings in training data)
     for user_id, place_id, rating_ui in shuffled_training_data.values:
+        # r_ui = mu + bu + bp + qTp (our prediction for r_ui)
+        # mu = global_bias
+        # bu = user_bias[user_id]
+        # bp = place_bias[place_id]
+        # qTp = np.dot(p[user_id], q[place_id])
         prediction = global_bias + user_bias[user_id] + place_bias[place_id]
         prediction += np.dot(p[user_id], q[place_id])
+
+        # the error is observed rating - predicted rating
         error = rating_ui - prediction
 
-        # Update biases
+        # Update biases, this equation derived from regularized error function
+        # in respect to bu and bp
         user_bias[user_id] += learning_rate * (error - (user_bias_reg * user_bias[user_id]))
         place_bias[place_id] += learning_rate * (error - (place_bias_reg * place_bias[place_id]))
 
-        # Update latent factors
+        # Update latent factors, this equation derived from regularized error function
+        # in respect to q and p
         p_u = p[user_id]
         p[user_id] += learning_rate * ((error * q[place_id]) - (user_reg * p[user_id]))
         q[place_id] += learning_rate * ((error * p_u) - (place_reg * q[place_id]))
@@ -45,6 +55,8 @@ def train(
 ):
     n_user = number_of_users
     n_place = number_of_places
+
+    # Initiate random numbers with normal distribution for user and place factors
     p = dict(zip(
         user_ids,
         np.random.normal(scale=1. / n_factors, size=(n_user, n_factors))
@@ -53,6 +65,7 @@ def train(
         place_ids,
         np.random.normal(scale=1. / n_factors, size=(n_place, n_factors))
     ))
+    # Initiate biases with zeros
     user_bias = dict(zip(
         user_ids,
         np.zeros(n_user)
@@ -61,6 +74,7 @@ def train(
         place_ids,
         np.zeros(n_place)
     ))
+    # global bias or mu is the mean of all ratings
     global_bias = np.mean(training_rating_data['rating'])
     p, q, user_bias, place_bias, global_bias = partial_train(
         training_rating_data, user_bias_reg, place_bias_reg,
@@ -74,9 +88,31 @@ def partial_train(
         user_reg, place_reg, learning_rate, n_epochs,
         p, q, user_bias, place_bias, global_bias
 ):
+    """
+    Function to train the model with SGD, the difference from
+    train function is, this function does not initiate the random
+    factors and biases, so we can call this if there's existing
+    factors and biases and we want to continue the training
+    using new data
+    :param training_rating_data:
+    :param user_bias_reg:
+    :param place_bias_reg:
+    :param user_reg:
+    :param place_reg:
+    :param learning_rate:
+    :param n_epochs:
+    :param p:
+    :param q:
+    :param user_bias:
+    :param place_bias:
+    :param global_bias:
+    :return:
+    """
+    # Loop through epochs
     for _ in range(n_epochs):
+        # shufffle the training data
         shuffled_training_data = training_rating_data.sample(frac=1).reset_index(drop=True)
-        # print(f"length of training indices: {len(shuffled_training_data)}")
+        # call sgd procedure
         p, q, user_bias, place_bias = compute_sgd(
             shuffled_training_data,
             user_bias_reg, place_bias_reg, user_reg,
@@ -94,6 +130,18 @@ def predict_single(
     place_bias,
     global_bias
 ):
+    """
+    Function to predict single rating by user_id for place_id
+    :param user_id:
+    :param place_id:
+    :param p:
+    :param q:
+    :param user_bias:
+    :param place_bias:
+    :param global_bias:
+    :return:
+    """
+
     prediction = global_bias + user_bias[user_id] + place_bias[place_id]
     prediction += p[user_id].dot(q[place_id].T)
 
@@ -106,6 +154,16 @@ def run_sgd_background(
     n_factors=40,
     iterations=100
 ):
+    """
+    Function to run SGD in background, this function will be called
+    in background thread so the main thread can still serve the request
+    :param new_rating_data:
+    :param learning_rate:
+    :param regularization:
+    :param n_factors:
+    :param iterations:
+    :return:
+    """
     print(f"Start calculating SGD")
     user_bias_reg = regularization
     place_bias_reg = regularization
@@ -114,6 +172,8 @@ def run_sgd_background(
 
 
     if new_rating_data is None:
+        # If this function called without new data specified,
+        # we assume the caller wants to train the model with all data
         # get all ratings data from db
         train_data = get_all_ratings()
         train_data = train_data[['user_id', 'place_id', 'rating']]
@@ -124,29 +184,40 @@ def run_sgd_background(
         global_bias = None
 
     else:
+        # If new data specified,
+        # we'll gonna do online learning to update existing user and place factors
         length_of_new_data = len(new_rating_data)
         previous_data_length = meetingyuk_mongo_collection('place_db', 'ratings').count_documents({}) - length_of_new_data
         train_data = new_rating_data
         train_user_ids = train_data['user_id'].unique()
         train_place_ids = train_data['place_id'].unique()
+
+        # get user factors from db
         p = get_user_factor_df(train_user_ids)
         p = {col: p[col].values for col in p.columns}
 
+        # get place factors from db
         q = get_place_factor_df(train_place_ids)
         q = {col: q[col].values for col in q.columns}
 
+        # get user bias from db
         user_bias = get_user_bias(train_user_ids)
         user_bias = {key: [val] for key, val in user_bias.items()}
 
+        # get place bias from db
         place_bias = get_place_bias(train_place_ids)
         place_bias = {key: [val] for key, val in place_bias.items()}
 
+        # get global bias from db
         existing_global_bias = get_global_bias()
 
+        # calculate new global bias based on new data
         global_bias = (
             previous_data_length * existing_global_bias + np.sum(train_data['rating'])
         ) / (previous_data_length + length_of_new_data)
 
+
+    # map the ids to integers, this is needed to index the factors matrix
     uid_to_int = {uid: iid for iid, uid in enumerate(train_data['user_id'].unique())}
     pid_to_int = {pid: iid for iid, pid in enumerate(train_data['place_id'].unique())}
     int_to_uid = {iid: uid for iid, uid in enumerate(train_data['user_id'].unique())}
@@ -158,12 +229,14 @@ def run_sgd_background(
     place_ids_int = train_data['place_id'].unique()
 
     print(f"Start training SGD")
+    # If there's existing factors, we'll do online learning
     if p is not None:
         p, q, user_bias, place_bias, global_bias = partial_train(
             train_data, user_bias_reg, place_bias_reg,
             user_reg, place_reg, learning_rate, iterations,
             p, q, user_bias, place_bias, global_bias
         )
+    # If there's no existing factors, we learn from scratch
     else:
         p, q, user_bias, place_bias, global_bias = train(
             train_data, user_ids_int, place_ids_int,
