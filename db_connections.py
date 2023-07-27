@@ -104,7 +104,7 @@ def get_new_ratings_data(data_ids):
 
 def get_user_factor_df(user_ids):
     """
-    Get user factor dataframe
+    Get user factor in pandas dataframe type (python library for tables)
     :param user_ids: list of user ids
     :return: user factor for each user id that stored in MongoDB
     """
@@ -121,7 +121,7 @@ def get_user_factor_df(user_ids):
 
 def get_place_factor_df(place_ids):
     """
-    Get place factor dataframe
+    Get place factor in pandas dataframe type (python library for tables)
     :param place_ids: list of place ids
     :return: place factor for each place id that stored in MongoDB
     """
@@ -190,7 +190,7 @@ def get_global_bias():
 
 def store_dataframe_to_mongo(df, collection, factor_key):
     """
-    Store a dataframe to MongoDB
+    Store a pandas dataframe to MongoDB
     :param df: dataframe to store
     :param collection: MongoDB collection
     :param factor_key: factor key name  (e.g. "latent_factors")

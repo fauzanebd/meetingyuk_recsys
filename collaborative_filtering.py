@@ -252,7 +252,9 @@ def run_sgd_background(
     :param iterations: number of iterations/eppochs
     :return: None, the trained user and place factors and user and place and global biases will be saved in db immediately
     """
-    print(f"Start calculating SGD")
+    print(f"Start calculating SGD in background")
+
+
     user_bias_reg = regularization
     place_bias_reg = regularization
     user_reg = regularization
@@ -273,7 +275,7 @@ def run_sgd_background(
 
     else:
         # If new data specified,
-        # we'll gonna do online learning to update existing user and place factors
+        # we will update previous factors using new data
         length_of_new_data = len(new_rating_data)
         previous_data_length = meetingyuk_mongo_collection('place_db', 'ratings').count_documents({}) - length_of_new_data
         train_data = new_rating_data
@@ -305,26 +307,31 @@ def run_sgd_background(
         ) / (previous_data_length + length_of_new_data)
 
 
-    # map the ids to integers, this is needed to index the factors matrix
+    # map the string of all ids to integers, this is needed to index the factors matrix
     uid_to_int = {uid: iid for iid, uid in enumerate(train_data['user_id'].unique())}
     pid_to_int = {pid: iid for iid, pid in enumerate(train_data['place_id'].unique())}
+
+    # reverse map, we need to return original id at the end when store to mongodb
     int_to_uid = {iid: uid for iid, uid in enumerate(train_data['user_id'].unique())}
     int_to_pid = {iid: pid for iid, pid in enumerate(train_data['place_id'].unique())}
 
+    # do mapping/convert from original ids to integer version
     train_data['user_id'] = train_data['user_id'].map(uid_to_int)
     train_data['place_id'] = train_data['place_id'].map(pid_to_int)
     user_ids_int = train_data['user_id'].unique()
     place_ids_int = train_data['place_id'].unique()
 
     print(f"Start training SGD")
-    # If there's existing factors, we'll do online learning
+    # If there's existing factors, we'll continue the learning using previously
+    # trained factors, so we call partial_train
     if p is not None:
         p, q, user_bias, place_bias, global_bias = partial_train(
             train_data, user_bias_reg, place_bias_reg,
             user_reg, place_reg, learning_rate, iterations,
             p, q, user_bias, place_bias, global_bias
         )
-    # If there's no existing factors, we learn from scratch
+    # If there's no existing factors, we learn from all rating
+    # data in database, so we call train function
     else:
         p, q, user_bias, place_bias, global_bias = train(
             train_data, user_ids_int, place_ids_int,
@@ -335,6 +342,8 @@ def run_sgd_background(
             n_factors=n_factors
         )
 
+
+    # convert vector to dataframe for easy update
     p_df = pd.DataFrame(p)
     q_df = pd.DataFrame(q)
     ubidf = pd.DataFrame(user_bias, index=[0])
@@ -345,6 +354,8 @@ def run_sgd_background(
     ubidf.columns = [int_to_uid[i] for i in ubidf.columns]
     pbidf.columns = [int_to_pid[i] for i in pbidf.columns]
 
+
+    # Then we store the factors and biases to mongodb
     print('storing user factors')
     store_dataframe_to_mongo(
         p_df,

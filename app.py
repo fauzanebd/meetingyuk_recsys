@@ -151,6 +151,7 @@ def _train_new_data_sgd():
     new_data_ids = reqdata['new_data_ids']
     new_data = get_new_ratings_data(new_data_ids)
 
+    # Start training SGD in background thread
     thread = Thread(target=run_sgd_background, args=(new_data,))
     thread.start()
 
