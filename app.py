@@ -17,21 +17,32 @@ load_dotenv(".env")
 app = Flask(__name__)
 
 # sched = BackgroundScheduler(daemon=True)
-# sched.add
-
+# sched.add_job(run_sgd_background, 'interval', minutes=(60 * 24))
 
 @app.route('/')
-def hello_world():  # put application's code here
+def hello_world():
+    """
+    Test API
+    :return: Hello World!
+    """
     return 'Hello World!'
+
 
 @app.route('/near_recs/<string:user_latitude>,<string:user_longitude>', methods=['GET'])
 def _nearest_recommendation(user_latitude, user_longitude):
+    """
+    Get nearest recommendations
+    :param user_latitude: user latitude
+    :param user_longitude: user longitude
+    :return: nearest merchant recommendations, in json format
+    """
     max_returns = request.args.get('max_returns', default=25, type=int)
     max_radius = request.args.get('max_radius', default=1000, type=float)
     if user_latitude is None or user_longitude is None:
         abort(400)
     else:
         try:
+            # If recommendation is not empty, return 200, with recommendations
             return (
                 jsonify({
                     "success": True,
@@ -40,36 +51,40 @@ def _nearest_recommendation(user_latitude, user_longitude):
                     )
                 })
             )
-        except Exception as e:
+        except ValueError as e:
+            # If recommendation is empty, return 501
             return (
                 jsonify({
-                    "error": e
+                    "error": f"{e}"
+                }), 501
+            )
+        except Exception as e:
+            # If other errors, return 500
+            return (
+                jsonify({
+                    "error": f"{e}"
                 }), 500
             )
 
 @app.route('/recommendation/<string:user_id>', methods=['GET'])
 def _recommendation(user_id):
+    """
+    Get recommendations for a user, based on their previous ratings data
+    :param user_id: user id
+    :return: recommendations, in json format
+    """
 
     max_returns = request.args.get('max_returns', default=25, type=int)
+    latitude = request.args.get('latitude', default=None, type=float)
+    longitude = request.args.get('longitude', default=None, type=float)
+    max_radius = request.args.get('max_radius', default=10000, type=float) # radius in km
     include_rated = request.args.get('include_rated', default=False, type=bool)
-    reqbody = None
-    try:
-        reqbody = request.get_json()
-    except Exception as e:
-        pass
-    latitude = None
-    longitude = None
-    max_radius = None
-    if reqbody:
-        if 'location' in reqbody:
-            latitude = reqbody['location']['latitude']
-            longitude = reqbody['location']['longitude']
-            max_radius = reqbody['location'].get('max_radius', 10000)
-            max_radius = float(max_radius)
+    max_radius = float(max_radius)
 
     if user_id is None:
         abort(400)
     else:
+        # If recommendation is not empty, return 200, with recommendations
         try:
             return (
                 jsonify({
@@ -79,10 +94,18 @@ def _recommendation(user_id):
                     )
                 })
             )
-        except Exception as e:
+        except ValueError as e:
+            # If recommendation is empty, return 501
             return (
                 jsonify({
-                    "error": e
+                    "error": f"{e}"
+                }), 501
+            )
+        except Exception as e:
+            # If other errors, return 500
+            return (
+                jsonify({
+                    "error": f"{e}"
                 }), 500
             )
 
@@ -93,7 +116,7 @@ def _train_kmeans():
     # to retrain the kmeans model
     thread = Thread(target=find_k)
     thread.start()
-    return jsonify({"message": "K-means training started in background."})
+    return jsonify({"message": "K-means training started in background."}), 200
 
 
 @app.route('/sgd/train_new_data', methods=['GET'])
@@ -111,10 +134,16 @@ def _train_new_data_sgd():
         }), 400
 
     if reqdata is None:
-        abort(400)
+        return jsonify({
+            "success": False,
+            "message": "Request body is empty."
+        }), 400
 
     if 'new_data_ids' not in reqdata:
-        abort(400)
+        return jsonify({
+            "success": False,
+            "message": "new_data_ids not found in request body. Please provide new_data_ids to add to model training."
+        }), 400
 
     new_data_ids = reqdata['new_data_ids']
     new_data = get_new_ratings_data(new_data_ids)
@@ -122,12 +151,11 @@ def _train_new_data_sgd():
     thread = Thread(target=run_sgd_background, args=(new_data,))
     thread.start()
 
-    return jsonify({"message": "SGD training started in background."})
+    return jsonify({"message": "SGD training started in background."}), 200
 
 def start_app():
     print("Starting app...")
     load_dotenv(".env")
-    # run_sgd_background()
     find_k()
 
 start_app()

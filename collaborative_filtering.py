@@ -12,6 +12,21 @@ def compute_sgd(
     place_reg, learning_rate, p, q,
     user_bias, place_bias, global_bias
 ):
+    """
+    Function to compute stochastic gradient descent
+    :param shuffled_training_data: training data for sgd procedure
+    :param user_bias_reg: regularization parameter for user bias
+    :param place_bias_reg: regularization parameter for place bias
+    :param user_reg: regularization parameter for user latent factors
+    :param place_reg: regularization parameter for place latent factors
+    :param learning_rate: learning rate
+    :param p: user latent factors
+    :param q: place latent factors
+    :param user_bias: user bias
+    :param place_bias: place bias
+    :param global_bias: global bias
+    :return: modified p, q, user_bias, place_bias, global_bias based on sgd
+    """
     # Loop through r_ui in D (all ratings in training data)
     for user_id, place_id, rating_ui in shuffled_training_data.values:
         # r_ui = mu + bu + bp + qTp (our prediction for r_ui)
@@ -53,6 +68,22 @@ def train(
     n_epochs=10,
     n_factors=10
 ):
+    """
+    Function to train the model with SGD
+    :param training_rating_data: training data for sgd procedure
+    :param user_ids: list of user ids in training data
+    :param place_ids: list of place ids in training data
+    :param user_bias_reg: regularization parameter for user bias
+    :param place_bias_reg: regularization parameter for place bias
+    :param user_reg: regularization parameter for user latent factors
+    :param place_reg: regularization parameter for place latent factors
+    :param number_of_users: number of users in training data
+    :param number_of_places: number of places in training data
+    :param learning_rate: learning rate used for sgd training
+    :param n_epochs: number of epochs used for sgd training
+    :param n_factors: number of latent factors
+    :return: p, q, user_bias, place_bias, global_bias
+    """
     n_user = number_of_users
     n_place = number_of_places
 
@@ -94,19 +125,19 @@ def partial_train(
     factors and biases, so we can call this if there's existing
     factors and biases and we want to continue the training
     using new data
-    :param training_rating_data:
-    :param user_bias_reg:
-    :param place_bias_reg:
-    :param user_reg:
-    :param place_reg:
-    :param learning_rate:
-    :param n_epochs:
-    :param p:
-    :param q:
-    :param user_bias:
-    :param place_bias:
-    :param global_bias:
-    :return:
+    :param training_rating_data: training data for sgd procedure
+    :param user_bias_reg: regularization parameter for user bias
+    :param place_bias_reg: regularization parameter for place bias
+    :param user_reg: regularization parameter for user latent factors
+    :param place_reg: regularization parameter for place latent factors
+    :param learning_rate: learning rate used for sgd training
+    :param n_epochs: number of epochs used for sgd training
+    :param p: user latent factors
+    :param q: place latent factors
+    :param user_bias: user bias
+    :param place_bias: place bias
+    :param global_bias: global bias
+    :return: p, q, user_bias, place_bias, global_bias
     """
     # Loop through epochs
     for _ in range(n_epochs):
@@ -132,14 +163,14 @@ def predict_single(
 ):
     """
     Function to predict single rating by user_id for place_id
-    :param user_id:
-    :param place_id:
-    :param p:
-    :param q:
-    :param user_bias:
-    :param place_bias:
-    :param global_bias:
-    :return:
+    :param user_id: user id
+    :param place_id: place id
+    :param p: user latent factors
+    :param q: place latent factors
+    :param user_bias: user bias
+    :param place_bias: place bias
+    :param global_bias: global bias
+    :return: prediction
     """
 
     prediction = global_bias + user_bias[user_id] + place_bias[place_id]
@@ -157,12 +188,12 @@ def run_sgd_background(
     """
     Function to run SGD in background, this function will be called
     in background thread so the main thread can still serve the request
-    :param new_rating_data:
-    :param learning_rate:
-    :param regularization:
-    :param n_factors:
-    :param iterations:
-    :return:
+    :param new_rating_data: new rating data to be used for online learning, if not defined, training is done with all data exist in db
+    :param learning_rate: learning rate
+    :param regularization: regularization parameter
+    :param n_factors: number of latent factors
+    :param iterations: number of iterations/eppochs
+    :return: None, the trained user and place factors and user and place and global biases will be saved in db immediately
     """
     print(f"Start calculating SGD")
     user_bias_reg = regularization

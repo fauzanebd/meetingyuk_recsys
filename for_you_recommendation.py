@@ -20,7 +20,10 @@ def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_
 
     if user_latitude and user_longitude:
         # If user location defined, get nearest merchants
-        nearest_places = nearest_recommendation(user_latitude, user_longitude, max_radius=max_radius, from_api=False)
+        try:
+            nearest_places = nearest_recommendation(user_latitude, user_longitude, max_radius=max_radius, from_api=False)
+        except ValueError:
+            raise ValueError("No recommendations found within the radius of {} km".format(max_radius))
         recommendation_candidate_places_ids = nearest_places['_id'].tolist()
         # get user rated places
         user_rated_places = get_user_rated_places(user_id)
@@ -99,5 +102,6 @@ def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_
     else:
         dataset = get_merchant_details(recommended_place_ids)
     dataset['predicted_rating'] = dataset['_id'].map(dict(zip(top_ratings_df['place_id'], top_ratings_df['rating'])))
+    dataset.sort_values(by=['predicted_rating'], ascending=False, inplace=True)
     return dataset.to_json(orient='records')
 

@@ -9,6 +9,15 @@ import pandas as pd
 
 
 def nearest_recommendation(latitude, longitude, max_returns=10000, from_api=False, max_radius=10000):
+    """
+    This function return nearby places
+    :param latitude: user latitude
+    :param longitude: user longitude
+    :param max_returns: number of maximum places returned
+    :param from_api: if True, return places with json format
+    :param max_radius: maximum radius to search for nearest places
+    :return:
+    """
     dfcluster, kmeans = get_kmeans_model()
 
     places = get_all_merchant_id_and_locs()
@@ -24,20 +33,41 @@ def nearest_recommendation(latitude, longitude, max_returns=10000, from_api=Fals
     # recommendation['latitude'] = pd.to_numeric(recommendation['latitude'], errors='coerce')
     # recommendation['longitude'] = pd.to_numeric(recommendation['longitude'], errors='coerce')
 
-    recommendation['distance'] = haversine_distances(
-        recommendation[['latitude', 'longitude']], user_loc
-    )
-    recommendation['distance'] = recommendation['distance'] * 6371
+    # recommendation['distance'] = haversine_distances(
+    #     recommendation[['latitude', 'longitude']], user_loc
+    # )
+    # recommendation['distance'] = recommendation['distance'] * 6371
+    # recommendation = recommendation[recommendation['distance'] <= max_radius]
+
+    # Convert to radians
+    recommendation_rad = np.radians(recommendation[['latitude', 'longitude']])
+    user_loc_rad = np.radians(user_loc)
+
+    # Compute distances
+    distances_rad = haversine_distances(recommendation_rad, user_loc_rad)
+    distances_km = distances_rad * 6371.0
+
+    # Assign distances to the recommendation dataframe
+    recommendation['distance'] = distances_km[:, 0]  # Taking the first column since user_loc is a single point
+
+    # Filter out recommendations beyond the max_radius
     recommendation = recommendation[recommendation['distance'] <= max_radius]
+
+    # if recommendation is empty after filtered, raise error:
+    if recommendation.empty:
+        raise ValueError("No recommendations found within the radius of {} km".format(max_radius))
+
     if len(recommendation) > max_returns:
         sort = recommendation.sort_values(by=['distance'], ascending=True)[:max_returns]
     else:
         sort = recommendation.sort_values(by=['distance'], ascending=True)
 
 
+
     recommended_place_ids = sort['_id'].tolist()
     dataset = get_merchant_details(recommended_place_ids)
     dataset['distance_in_km'] = dataset['_id'].map(dict(zip(sort['_id'], sort['distance'])))
+    dataset.sort_values(by=['distance_in_km'], inplace=True)
     if from_api:
         result = dataset.to_json(orient='records')
     else:
@@ -56,6 +86,10 @@ def get_kmeans_model():
 
 
 def find_k():
+    """
+    This function find the best k for kmeans
+    :return: Cluster of kmeans model
+    """
     print("Start calculating kmeans")
     df = get_all_merchants()
     df['latitude'] = df['location.latitude']

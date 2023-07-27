@@ -9,4 +9,4 @@ ENV MONGODB_URI mongodb://mongo:BuQRyu9ToLd63jhYJhrx@103.150.92.14:27017/?authMe
 
 COPY . .
 
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:7000", "app:app"]
