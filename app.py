@@ -36,6 +36,8 @@ def _nearest_recommendation(user_latitude, user_longitude):
     :param user_longitude: user longitude
     :return: nearest merchant recommendations, in json format
     """
+
+    # Get max returns and max radius from request arguments
     max_returns = request.args.get('max_returns', default=25, type=int)
     max_radius = request.args.get('max_radius', default=1000, type=float)
     if user_latitude is None or user_longitude is None:
@@ -74,6 +76,7 @@ def _recommendation(user_id):
     :return: recommendations, in json format
     """
 
+    # Get max returns, latitude, longitude, and max radius from request arguments
     max_returns = request.args.get('max_returns', default=25, type=int)
     latitude = request.args.get('latitude', default=None, type=float)
     longitude = request.args.get('longitude', default=None, type=float)
