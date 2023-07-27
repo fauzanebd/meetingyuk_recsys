@@ -27,30 +27,86 @@ def compute_sgd(
     :param global_bias: global bias
     :return: modified p, q, user_bias, place_bias, global_bias based on sgd
     """
-    # Loop through r_ui in D (all ratings in training data)
+    # We loop through all row in training data
+    # Each row contains rating data for a place id by a user id.
     for user_id, place_id, rating_ui in shuffled_training_data.values:
-        # r_ui = mu + bu + bp + qTp (our prediction for r_ui)
-        # mu = global_bias
-        # bu = user_bias[user_id]
-        # bp = place_bias[place_id]
-        # qTp = np.dot(p[user_id], q[place_id])
-        prediction = global_bias + user_bias[user_id] + place_bias[place_id]
-        prediction += np.dot(p[user_id], q[place_id])
+        # We use stochastic gradient descent to optimize the Regularized error function
+
+        # Matrix Factorization principle state that a rating matrix can be factorized into smaller dimension matrix.
+        # In this code, rating matrix R factorized into factor matrix P and factor matrix Q
+        # So, the ratings by user u for place i is r_ui = P[u] * Q[u]
+        # matrix P contains user factors, and Q contains place factors
+        # we can get ratings by user id u for place id p by looking at dot product result
+        # of user u latent factors and place p latent factors.
+        # So, the ratings by user_id for place_id is:
+        # r_ui = user_factors[user_id] * place_factors[place_id]
+
+        # But, optimization by Bell and Koren in their solution done by considering biases
+        # in the rating prediction.
+        # By considering the biases, prediction rating by an user for a place is
+        # global bias + user bias + place bias + rating prediction from dot product
+        # global bias is the average of all ratings
+        # user bias if the average of ratings by current user_id
+        # place bias is the average of ratings for current place_id
+        # rating prediction is the dot product of user latent factors and place latent factors.
+        # So, final equation for rating prediction is:
+        # predicted rating = mu + bu + bp + user_factors[user_id] * place_factors[place_id]
+
+        # Then, we aim to minimize squared error function:
+        # E = (actual rating - predicted rating)^2
+        # To avoid overfitting, we add regularization parameter for biases and latent factors.
+        # So, the regularized error function is:
+        # E = (actual rating - predicted rating)^2 + lambda * (bu^2 + bp^2 + ||p_u||^2 + ||q_i||^2)
+        # In this regularized error, we punish each parameters to be optimized (bias parameter and latent factors parameters) that
+        # has high slope, means the parameter had so much power in changing rating predictions
+        # how we punish it is by adding squared value of parameters.
+
+        # In this functions, user_factors stored in p variable, and place_factors stored in q variable.
+        # We first predict the rating by user_id for place_id, by existing user_factors and place_factors
+        # and existing biases.
+
+        # First, we find initial predictions for this loop
+        # This code represent mu + bu + bp + user_factors[user_id] * place_factors[place_id]
+        prediction = global_bias + user_bias[user_id] + place_bias[place_id] + np.dot(p[user_id], q[place_id])
 
         # the error is observed rating - predicted rating
         error = rating_ui - prediction
 
-        # Update biases, this equation derived from regularized error function
-        # in respect to bu and bp
-        user_bias[user_id] += learning_rate * (error - (user_bias_reg * user_bias[user_id]))
-        place_bias[place_id] += learning_rate * (error - (place_bias_reg * place_bias[place_id]))
+        # Then, the error used to update the parameters.
 
-        # Update latent factors, this equation derived from regularized error function
-        # in respect to q and p
-        p_u = p[user_id]
-        p[user_id] += learning_rate * ((error * q[place_id]) - (user_reg * p[user_id]))
-        q[place_id] += learning_rate * ((error * p_u) - (place_reg * q[place_id]))
+        # To update user bias
+        # New user bias parameter for current looped user_id is updated by adding step size to previous parameter.
+        # Step size is derivation from regularized squared error function
+        # in respect to user bias bu.
+        # step size = learning_rate * error value - learning_rate * regularization for user bias
+        step_size = learning_rate * (error - (user_bias_reg * user_bias[user_id]))
+        user_bias[user_id] = user_bias[user_id] + step_size
 
+        # To update place bias
+        # New place bias parameter for current looped place_id is updated by adding step size to previous parameter
+        # Step size is derivation from regularized squared error function
+        # in respect to place bias bp
+        # step size = learning_rate * error_value - learning_rate * regularization for place bias
+        step_size = learning_rate * (error - (place_bias_reg * place_bias[place_id]))
+        place_bias[place_id] = place_bias[place_id] + step_size
+
+        # To update user factors p
+        # New latent factors for current looped user_id is updated by adding step size to previous latent factors
+        # Step size is derivation from regularized squared error function in respect to user factors p
+        # step size = learning_rate * error * place factors q - learning_rate * regularization for user factors
+        step_size = learning_rate * ((error * q[place_id]) - (user_reg * p[user_id]))
+        p[user_id] = p[user_id] + step_size
+
+        # To update place factors q
+        # New latent factors for current looped place_id is updated by adding step size to previous latent factors
+        # step size is derivation from regularized squared error function in respect to place factors q
+        # step size = learning_rate * error * user factors p - learning_rate * regularization for place factors
+        step_size = learning_rate * ((error * p[user_id]) - (place_reg * q[place_id]))
+        q[place_id] = q[place_id] + step_size
+
+        # If there is another data, we will go on another loop, and place factors will be updated
+
+    # If no training data left, we return the user factors p, place factors q, user bias and place bias.
     return p, q, user_bias, place_bias
 
 
@@ -89,12 +145,12 @@ def train(
 
     # Initiate random numbers with normal distribution for user and place factors
     p = dict(zip(
-        user_ids,
-        np.random.normal(scale=1. / n_factors, size=(n_user, n_factors))
+        user_ids, # id of users that exist in training data
+        np.random.normal(scale=1. / n_factors, size=(n_user, n_factors)) # initial vector values for an user_id
     ))
     q = dict(zip(
-        place_ids,
-        np.random.normal(scale=1. / n_factors, size=(n_place, n_factors))
+        place_ids, # id of places that exist in training data
+        np.random.normal(scale=1. / n_factors, size=(n_place, n_factors)) # initial vector values for a place_id
     ))
     # Initiate biases with zeros
     user_bias = dict(zip(
@@ -124,7 +180,8 @@ def partial_train(
     train function is, this function does not initiate the random
     factors and biases, so we can call this if there's existing
     factors and biases and we want to continue the training
-    using new data
+    using new data.
+    In other word, used when already trained data.
     :param training_rating_data: training data for sgd procedure
     :param user_bias_reg: regularization parameter for user bias
     :param place_bias_reg: regularization parameter for place bias
@@ -187,7 +244,7 @@ def run_sgd_background(
 ):
     """
     Function to run SGD in background, this function will be called
-    in background thread so the main thread can still serve the request
+    in background thread so the main flask app thread can still serve the request
     :param new_rating_data: new rating data to be used for online learning, if not defined, training is done with all data exist in db
     :param learning_rate: learning rate
     :param regularization: regularization parameter

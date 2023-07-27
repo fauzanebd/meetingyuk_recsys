@@ -59,7 +59,7 @@ def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_
             nearest_places.sort_values(by=['ratings'], ascending=False, inplace=True)
             return nearest_places.to_json(orient='records')
 
-    # get place factors
+    # get place factors, result from matrix factorization
     place_factors = get_place_factor_df(recommendation_candidate_places_ids)
     place_id_to_int_map = {uid: iid for iid, uid in enumerate(place_factors.columns)}
     int_to_place_id_map = {iid: uid for iid, uid in enumerate(place_factors.columns)}
@@ -67,7 +67,7 @@ def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_
 
     place_bias = get_place_bias(recommendation_candidate_places_ids)
 
-    # get user factors
+    # get user factors, result from matrix factorization
     user_factors = get_user_factor_df(user_id)
     user_factors_array = np.array(user_factors[user_id].tolist())
 
@@ -89,19 +89,27 @@ def for_you_recommendation(user_id, max_returns=10000, user_latitude=None, user_
         except KeyError:
             pass
 
+    # list of predicted ratings, sorted by ratings
     pred_df = pd.DataFrame(list(predictions.items()), columns=['place_id', 'rating'])
+
+    # Filter maximum number of returned places
     if len(pred_df) >= max_returns:
+        # if recommendations exceed number of maximum returned places, return only maximum number of places
         top_ratings_df = pred_df.sort_values(by='rating', ascending=False).head(max_returns)
     else:
         top_ratings_df = pred_df.sort_values(by='rating', ascending=False)
 
+    # get recommended merchant ids
     recommended_place_ids = top_ratings_df['place_id'].tolist()
-    # top_ratings_df.drop(['rating'], axis=1, inplace=True)
+
     if user_latitude and user_longitude:
         dataset = nearest_places[nearest_places['_id'].isin(recommended_place_ids)]
     else:
+        # get detail of recommended places, by passing merchant ids
         dataset = get_merchant_details(recommended_place_ids)
     dataset['predicted_rating'] = dataset['_id'].map(dict(zip(top_ratings_df['place_id'], top_ratings_df['rating'])))
+
+    # Sort recommendation by predicted rating
     dataset.sort_values(by=['predicted_rating'], ascending=False, inplace=True)
     return dataset.to_json(orient='records')
 

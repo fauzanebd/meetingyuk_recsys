@@ -20,24 +20,14 @@ def nearest_recommendation(latitude, longitude, max_returns=10000, from_api=Fals
     """
     dfcluster, kmeans = get_kmeans_model()
 
+    # Get all merchant ids and locations, in latitudes and longitudes
     places = get_all_merchant_id_and_locs()
     places.columns = ["_id", "latitude", "longitude"]
     user_loc = np.array([float(latitude), float(longitude)]).reshape(1, -1)
+
+    # Predict kmeans cluster
     cluster = kmeans.predict(user_loc)[0]
     recommendation = places[dfcluster == cluster]
-    # recommendation = recommendation[[
-    #     '_id', 'owner_id', 'name', 'address', 'latitude', 'longitude',
-    #     'ratings', 'review_count', 'opening_hours', 'image_url',
-    #     'rooms', 'tag_ids'
-    # ]]
-    # recommendation['latitude'] = pd.to_numeric(recommendation['latitude'], errors='coerce')
-    # recommendation['longitude'] = pd.to_numeric(recommendation['longitude'], errors='coerce')
-
-    # recommendation['distance'] = haversine_distances(
-    #     recommendation[['latitude', 'longitude']], user_loc
-    # )
-    # recommendation['distance'] = recommendation['distance'] * 6371
-    # recommendation = recommendation[recommendation['distance'] <= max_radius]
 
     # Convert to radians
     recommendation_rad = np.radians(recommendation[['latitude', 'longitude']])
@@ -65,6 +55,8 @@ def nearest_recommendation(latitude, longitude, max_returns=10000, from_api=Fals
 
 
     recommended_place_ids = sort['_id'].tolist()
+
+    # get merchant details, for given merchant ids
     dataset = get_merchant_details(recommended_place_ids)
     dataset['distance_in_km'] = dataset['_id'].map(dict(zip(sort['_id'], sort['distance'])))
     dataset.sort_values(by=['distance_in_km'], inplace=True)
@@ -72,14 +64,22 @@ def nearest_recommendation(latitude, longitude, max_returns=10000, from_api=Fals
         result = dataset.to_json(orient='records')
     else:
         result = dataset
+    # return result of recommendations
     return result
 
 
 
 def get_kmeans_model():
+    """
+    This function return kmeans model
+    :return: kmeans model from file
+    """
+
+    # load model from file
     with open("models/kmeans_model.pkl", "rb") as f:
       model = pickle.load(f)
 
+    # load model from file
     with open ("objects/data.obj","rb") as v:
       dfcluster = pickle.load(v)
     return dfcluster, model
@@ -91,28 +91,35 @@ def find_k():
     :return: Cluster of kmeans model
     """
     print("Start calculating kmeans")
+
+    # get all merchant from db
     df = get_all_merchants()
     df['latitude'] = df['location.latitude']
     df['longitude'] = df['location.longitude']
     coords = df[['latitude', 'longitude']]
     distortions = []
     K = range(1, 21)
+    # loop through k from 1 to 20
     for k in K:
         kmeansModel = KMeans(n_clusters=k)
         kmeansModel = kmeansModel.fit(coords)
         distortions.append(kmeansModel.inertia_)
 
+    # find the best k
     kn = KneeLocator(range(1, 21), distortions, curve='convex', direction='decreasing')
     k = kn.knee
 
     kmeans = KMeans(n_clusters=k, init='k-means++')
+    # fit kmeans model to data coordinates
     kmeans.fit(coords)
     df['cluster'] = kmeans.predict(df[['latitude', 'longitude']])
     dfcluster = df['cluster']
 
+    # save model to file
     with open("models/kmeans_model.pkl", "wb") as f:
         pickle.dump(kmeans, f)
 
+    # save model to file
     with open("objects/data.obj", "wb") as v:
         pickle.dump(dfcluster, v)
 
