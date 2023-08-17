@@ -1,3 +1,5 @@
 .env
 /models/
 /objects/
+__pycache__/
+models/kmeans_model.pkl
